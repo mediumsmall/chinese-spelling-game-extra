@@ -1,1 +1,601 @@
-index.html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>English to Chinese Writing Game</title>
+<script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.7.3/dist/hanzi-writer.min.js"></script>
+<style>
+:root{
+  --text:#171717;
+  --muted:#737373;
+  --border:#dedede;
+  --panel:#f6f5ef;
+  --card:#fff;
+  --success-bg:#edf8f2;
+  --success:#117247;
+  --danger-bg:#fff0ef;
+  --danger:#b42318;
+  --accent:#534ab7;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button{font:inherit;cursor:pointer}
+.game-shell{width:100%;max-width:1536px;margin:0 auto;padding:38px 55px 42px}
+.mode-bar{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:22px}
+.mode-toggle{padding:10px 18px;border:1px solid var(--border);background:#fff;color:var(--muted)}
+.mode-toggle:first-child{border-radius:10px 0 0 10px}
+.mode-toggle:last-child{border-radius:0 10px 10px 0}
+.mode-toggle.active{background:var(--text);border-color:var(--text);color:#fff;font-weight:650}
+.prompt-card{background:var(--panel);border-radius:18px;padding:36px 28px;margin-bottom:38px;text-align:center}
+.prompt-card p{font-size:44px;line-height:1.15;font-weight:750;margin:0}
+.prompt-help{font-size:15px;color:var(--muted);margin-top:12px}
+.word-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-bottom:24px}
+.wc{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:28px 24px 24px;min-width:0;text-align:center}
+.card-head{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+.lb{display:inline-block;font-size:20px;line-height:1;font-weight:750;padding:8px 14px;border-radius:9px}
+.la{background:#eeedfe;color:#3c3489;border:1px solid #afa9ec}
+.ls{background:#e6f1fb;color:#0c447c;border:1px solid #85b7eb}
+.lp{background:#e1f5ee;color:#085041;border:1px solid #5dcaa5}
+.lo{background:#faeeda;color:#633806;border:1px solid #ef9f27}
+.lc{background:#faece7;color:#4a1b0c;border:1px solid #f0997b}
+.word-text{font-size:30px;line-height:1.15;font-weight:750}
+.write-row{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:24px auto 16px}
+.char-wrap{position:relative;width:160px}
+.char-label{font-size:12px;color:var(--muted);margin-bottom:5px}
+.char-pad{position:relative;width:160px;height:160px;border:1px solid var(--border);border-radius:14px;background:
+  linear-gradient(to right,transparent 49.5%,#ececec 49.5%,#ececec 50.5%,transparent 50.5%),
+  linear-gradient(to bottom,transparent 49.5%,#ececec 49.5%,#ececec 50.5%,transparent 50.5%),
+  #fff;touch-action:none;overflow:hidden}
+.char-pad.done{border-color:var(--success);background-color:var(--success-bg)}
+.hint-layer{position:absolute;inset:0;pointer-events:none;z-index:2}
+.trace-layer{position:absolute;inset:0;pointer-events:none;z-index:0}
+.char-pad>svg:not(.hint-layer):not(.trace-layer){position:relative;z-index:1}
+.loading{display:flex;align-items:center;justify-content:center;height:100%;padding:8px;font-size:12px;color:var(--muted)}
+.zh-inp{display:block;width:100%;max-width:420px;margin:28px auto 0;font-size:30px;line-height:1.2;text-align:center;padding:13px 15px;border:1px solid var(--border);border-radius:11px;background:#fff;color:var(--text);outline:none}
+.zh-inp:focus{border-color:#aaa;box-shadow:0 0 0 3px rgba(0,0,0,.04)}
+.zh-inp.wrong{border-color:var(--danger);background:var(--danger-bg);color:var(--danger)}
+.status{min-height:22px;font-size:14px;color:var(--muted);margin-top:4px}
+.status.good{color:var(--success);font-weight:650}
+.status.bad{color:var(--danger)}
+.action-row{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.sm-btn,.game-footer button{padding:7px 13px;border:1px solid var(--border);border-radius:9px;background:#fff;color:var(--text)}
+.sm-btn:hover,.game-footer button:hover{border-color:#aaa}
+.sm-btn.primary{background:var(--text);border-color:var(--text);color:#fff}
+.answer-box{margin:22px auto 4px;border-radius:11px;padding:14px;width:100%;max-width:520px}
+.answer-box.success{background:var(--success-bg)}
+.answer-box.assisted{background:#fff8e8}
+.answer-box.revealed{background:#f5f5f5}
+.answer-zh{display:block;font-size:34px;font-weight:650;color:var(--success)}
+.answer-py{display:block;font-size:17px;margin-top:4px;color:var(--success);opacity:.85}
+.answer-box.assisted .answer-zh{color:#8a5a00}
+.answer-box.assisted .answer-py{color:#8a5a00}
+.answer-box.revealed .answer-zh{color:#5f5f5f}
+.answer-box.revealed .answer-py{color:#777}
+.answer-note{display:block;font-size:13px;margin-top:7px;color:var(--muted)}
+.game-footer{color:var(--muted);font-size:14px}
+.footer-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.footer-actions{display:flex;gap:8px;flex-wrap:wrap}
+.pip{width:8px;height:8px;border-radius:50%;background:#d5d5d5;display:inline-block;margin:0 4px}
+.pip.on{background:var(--text)}
+.kk{background:#f5f5f5;border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:12px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.lib-error{background:var(--danger-bg);color:var(--danger);padding:14px;border-radius:10px;margin-bottom:20px;text-align:center}
+@media(max-width:900px){
+  .game-shell{padding:28px 22px 34px}
+  .prompt-card p{font-size:34px}
+  .word-grid{grid-template-columns:1fr}
+}
+@media(max-width:520px){
+  .game-shell{padding:16px 12px 26px}
+  .prompt-card{padding:24px 14px;margin-bottom:18px}
+  .prompt-card p{font-size:27px}
+  .wc{padding:22px 12px}
+  .word-text{font-size:25px}
+  .char-wrap,.char-pad{width:146px}
+  .char-pad{height:146px}
+}
+</style>
+</head>
+<body>
+<h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);margin:-1px">English to Chinese character writing game</h1>
+<main class="game-shell"><div id="gc"></div></main>
+
+<script>
+var S=[
+  {en:"I bought a new camera and carry it with me every day.",zh:"我买了一个新照相机，天天都带着它。",w:[
+    {e:"I",z:"我",py:"wǒ",l:"主语",c:"ls"},
+    {e:"bought",z:"买了",py:"mǎi le",l:"谓语",c:"lp"},
+    {e:"a new camera,",z:"一个新照相机",py:"yí ge xīn zhào xiàng jī",l:"宾语",c:"lo"},
+    {e:"every day",z:"天天",py:"tiān tiān",l:"状语",c:"la"},
+    {e:"carry it with me.",z:"都带着它",py:"dōu dài zhe tā",l:"谓语",c:"lp"}
+  ]},
+  {en:"My cake was eaten by my younger brother.",zh:"我的蛋糕被弟弟吃了。",w:[
+    {e:"My cake",z:"我的蛋糕",py:"wǒ de dàn gāo",l:"主语",c:"ls"},
+    {e:"by my younger brother",z:"被弟弟",py:"bèi dì di",l:"状语",c:"la"},
+    {e:"was eaten.",z:"吃了",py:"chī le",l:"谓语",c:"lp"}
+  ]},
+  {en:"The puppy is sick, and I feel very sad.",zh:"小狗生病了，我心里很难过。",w:[
+    {e:"The puppy",z:"小狗",py:"xiǎo gǒu",l:"主语",c:"ls"},
+    {e:"is sick,",z:"生病了",py:"shēng bìng le",l:"谓语",c:"lp"},
+    {e:"I feel",z:"我心里",py:"wǒ xīn li",l:"主语",c:"ls"},
+    {e:"very sad.",z:"很难过",py:"hěn nán guò",l:"谓语",c:"lp"}
+  ]},
+  {en:"There is a very large supermarket to the east of the school.",zh:"学校的东边有一个很大的超市。",w:[
+    {e:"To the east of the school",z:"学校的东边",py:"xué xiào de dōng biān",l:"状语",c:"la"},
+    {e:"there is",z:"有",py:"yǒu",l:"谓语",c:"lp"},
+    {e:"a very large supermarket.",z:"一个很大的超市",py:"yí ge hěn dà de chāo shì",l:"宾语",c:"lo"}
+  ]},
+  {en:"Can I use a credit card to buy things here?",zh:"在这儿买东西可以用信用卡吗？",w:[
+    {e:"To buy things here",z:"在这儿买东西",py:"zài zhèr mǎi dōng xi",l:"状语",c:"la"},
+    {e:"can I use",z:"可以用",py:"kě yǐ yòng",l:"谓语",c:"lp"},
+    {e:"a credit card?",z:"信用卡吗",py:"xìn yòng kǎ ma",l:"宾语",c:"lo"}
+  ]},
+  {en:"The teacher cares a lot about our health.",zh:"老师很关心我们的身体健康。",w:[
+    {e:"The teacher",z:"老师",py:"lǎo shī",l:"主语",c:"ls"},
+    {e:"cares a lot about",z:"很关心",py:"hěn guān xīn",l:"谓语",c:"lp"},
+    {e:"our health.",z:"我们的身体健康",py:"wǒ men de shēn tǐ jiàn kāng",l:"宾语",c:"lo"}
+  ]},
+  {en:"Only by listening and speaking more can you learn Chinese well.",zh:"只有多听多说，才能学好汉语。",w:[
+    {e:"Only by listening and speaking more,",z:"只有多听多说",py:"zhǐ yǒu duō tīng duō shuō",l:"状语",c:"la"},
+    {e:"can you learn well",z:"才能学好",py:"cái néng xué hǎo",l:"谓语",c:"lp"},
+    {e:"Chinese.",z:"汉语",py:"hàn yǔ",l:"宾语",c:"lo"}
+  ]},
+  {en:"His score on this Chinese exam was very good.",zh:"这次汉语考试，他的成绩非常好。",w:[
+    {e:"On this Chinese exam,",z:"这次汉语考试",py:"zhè cì hàn yǔ kǎo shì",l:"状语",c:"la"},
+    {e:"his score",z:"他的成绩",py:"tā de chéng jì",l:"主语",c:"ls"},
+    {e:"was very good.",z:"非常好",py:"fēi cháng hǎo",l:"谓语",c:"lp"}
+  ]},
+  {en:"Waiter, please bring me a clean bowl.",zh:"服务员，请给我拿一个干净的碗。",w:[
+    {e:"Waiter,",z:"服务员",py:"fú wù yuán",l:"称呼",c:"lc"},
+    {e:"please bring me",z:"请给我拿",py:"qǐng gěi wǒ ná",l:"谓语",c:"lp"},
+    {e:"a clean bowl.",z:"一个干净的碗",py:"yí ge gān jìng de wǎn",l:"宾语",c:"lo"}
+  ]},
+  {en:"It is 3:15 right now, which is also 3 o'clock and 15 minutes.",zh:"现在是三点一刻，也就是三点十五分。",w:[
+    {e:"Right now it is",z:"现在是",py:"xiàn zài shì",l:"状语",c:"la"},
+    {e:"3:15,",z:"三点一刻",py:"sān diǎn yí kè",l:"宾语",c:"lo"},
+    {e:"which is also",z:"也就是",py:"yě jiù shì",l:"谓语",c:"lp"},
+    {e:"3 o'clock and 15 minutes.",z:"三点十五分",py:"sān diǎn shí wǔ fēn",l:"宾语",c:"lo"}
+  ]},
+  {en:"Don't worry, we can definitely solve this problem.",zh:"别担心，这个问题我们一定能解决。",w:[
+    {e:"Don't worry,",z:"别担心",py:"bié dān xīn",l:"谓语",c:"lp"},
+    {e:"this problem",z:"这个问题",py:"zhè ge wèn tí",l:"宾语",c:"lo"},
+    {e:"we",z:"我们",py:"wǒ men",l:"主语",c:"ls"},
+    {e:"can definitely solve.",z:"一定能解决",py:"yí dìng néng jiě jué",l:"谓语",c:"lp"}
+  ]},
+  {en:"This piece of clothing looks nice, do you want to try it on?",zh:"这件衣服很好看，你想试一下吗？",w:[
+    {e:"This piece of clothing",z:"这件衣服",py:"zhè jiàn yī fu",l:"主语",c:"ls"},
+    {e:"looks very nice,",z:"很好看",py:"hěn hǎo kàn",l:"谓语",c:"lp"},
+    {e:"do you want",z:"你想",py:"nǐ xiǎng",l:"主语",c:"ls"},
+    {e:"to try it on?",z:"试一下吗",py:"shì yí xià ma",l:"谓语",c:"lp"}
+  ]},
+  {en:"Look, how beautiful the scenery here is!",zh:"你看，这里的风景多么漂亮啊！",w:[
+    {e:"Look,",z:"你看",py:"nǐ kàn",l:"谓语",c:"lp"},
+    {e:"the scenery here",z:"这里的风景",py:"zhè lǐ de fēng jǐng",l:"主语",c:"ls"},
+    {e:"is so beautiful!",z:"多么漂亮啊",py:"duō me piào liang a",l:"谓语",c:"lp"}
+  ]}
+];
+
+var ci=0, mode="writing", ws=[], writers=[], completed=[], assisted=[], strokeProgress=[], mistakes=[], hinted=[], typeHints=[], charData=[], uv=[];
+var bestVoice=null;
+
+function charsFor(word){
+  return Array.from(word.z).filter(function(ch){return /[\u3400-\u9fff]/.test(ch);});
+}
+
+function norm(s){
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[\s。，？！、]/g,"");
+}
+
+function isMatch(input,word){
+  var value=norm(input);
+  return value&&(value===norm(word.z)||value===norm(word.py));
+}
+
+function loadVoice(){
+  if(!window.speechSynthesis) return;
+  var voices=speechSynthesis.getVoices();
+  var order=["Google 普通话（中国大陆）","Google Chinese (China)","Tingting","Microsoft Huihui"];
+  bestVoice=null;
+  order.some(function(name){
+    bestVoice=voices.find(function(v){return v.name===name;})||null;
+    return !!bestVoice;
+  });
+  if(!bestVoice) bestVoice=voices.find(function(v){return v.lang==="zh-CN";})||
+    voices.find(function(v){return v.lang&&v.lang.indexOf("zh")===0;})||null;
+}
+
+if(window.speechSynthesis){
+  loadVoice();
+  speechSynthesis.onvoiceschanged=loadVoice;
+}
+
+function gSpeak(){
+  if(!window.speechSynthesis) return;
+  var utterance=new SpeechSynthesisUtterance(S[ci].zh);
+  utterance.lang="zh-CN";
+  utterance.rate=.82;
+  if(bestVoice) utterance.voice=bestVoice;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utterance);
+}
+
+function emptyWordState(){
+  return S[ci].w.map(function(w){return charsFor(w).map(function(){return false;});});
+}
+
+function gInit(i){
+  writers.forEach(function(group){
+    group.forEach(function(writer){if(writer&&writer.cancelQuiz) writer.cancelQuiz();});
+  });
+  ci=i;
+  ws=S[i].w.map(function(){return 0;});
+  writers=S[i].w.map(function(){return [];});
+  completed=emptyWordState();
+  assisted=emptyWordState();
+  strokeProgress=S[i].w.map(function(w){return charsFor(w).map(function(){return 0;});});
+  mistakes=S[i].w.map(function(){return 0;});
+  hinted=S[i].w.map(function(w){return charsFor(w).map(function(){return false;});});
+  typeHints=S[i].w.map(function(){return false;});
+  charData=S[i].w.map(function(w){return charsFor(w).map(function(){return null;});});
+  uv=S[i].w.map(function(){return "";});
+  gRender();
+}
+
+function cardInner(i){
+  var w=S[ci].w[i], state=ws[i], chars=charsFor(w);
+  if(state===2||state===3){
+    var helped=mode==="writing"?assisted[i].filter(Boolean).length:0;
+    var boxClass=state===3?"revealed":helped?"assisted":"success";
+    var note=state===2&&helped
+      ?'<span class="answer-note">'+helped+' character'+(helped===1?" was":"s were")+' completed with help.</span>'
+      :"";
+    return '<div class="card-head"><span class="lb '+w.c+'">'+w.l+'</span><span class="word-text">'+w.e+'</span></div>'+
+      '<div class="answer-box '+boxClass+'">'+
+      '<span class="answer-zh">'+w.z+'</span><span class="answer-py">'+w.py+'</span>'+note+'</div>'+
+      '<div class="action-row"><button class="sm-btn" onclick="gRetry('+i+')">'+(mode==="writing"?'write again':'try again')+'</button></div>';
+  }
+  if(mode==="typing"){
+    var typeStatus=typeHints[i]
+      ?'<div class="status good">Pinyin: '+w.py+'</div>'
+      :(state===1
+        ?'<div class="status bad">Not quite. Try again, ask for a hint, or reveal it.</div>'
+        :'<div class="status">Type pinyin or Chinese characters, then press Enter.</div>');
+    return '<div class="card-head"><span class="lb '+w.c+'">'+w.l+'</span><span class="word-text">'+w.e+'</span></div>'+
+      '<input id="inp'+i+'" class="zh-inp'+(state===1?' wrong':'')+'" type="text" placeholder="pinyin or 汉字" autocomplete="off" autocorrect="off" spellcheck="false">'+
+      typeStatus+
+      '<div class="action-row"><button class="sm-btn" onclick="gTypeHint('+i+')">hint</button><button class="sm-btn" onclick="gReveal('+i+')">reveal</button></div>';
+  }
+  var pads=chars.map(function(ch,j){
+    return '<div class="char-wrap"><div class="char-label">character '+(j+1)+'</div>'+
+      '<div class="char-pad" id="pad-'+i+'-'+j+'"><span class="loading">loading...</span></div></div>';
+  }).join("");
+  return '<div class="card-head"><span class="lb '+w.c+'">'+w.l+'</span><span class="word-text">'+w.e+'</span></div>'+
+    '<div class="write-row">'+pads+'</div>'+
+    '<div id="status-'+i+'" class="status">Write each character in the correct stroke order.</div>'+
+    '<div class="action-row">'+
+      '<button class="sm-btn primary" onclick="gRetry('+i+')">start over</button>'+
+      '<button class="sm-btn" onclick="gHint('+i+')">hint: first 2 strokes</button>'+
+      '<button class="sm-btn" onclick="gShowNextStroke('+i+')">show next stroke</button>'+
+      '<button class="sm-btn" onclick="gTraceCurrent('+i+')">trace current character</button>'+
+    '</div>';
+}
+
+function padSize(){
+  return window.matchMedia("(max-width:520px)").matches?146:160;
+}
+
+function attachWriters(i){
+  if(mode!=="writing"||ws[i]>=2) return;
+  if(!window.HanziWriter){
+    var status=document.getElementById("status-"+i);
+    if(status){
+      status.className="status bad";
+      status.textContent="Writing practice could not load. Check your internet connection and reload.";
+    }
+    return;
+  }
+  writers[i]=[];
+  var chars=charsFor(S[ci].w[i]);
+  chars.forEach(function(ch,j){
+    var id="pad-"+i+"-"+j, el=document.getElementById(id);
+    if(!el) return;
+    el.innerHTML="";
+    var size=padSize();
+    var writer=HanziWriter.create(id,ch,{
+      width:size,
+      height:size,
+      padding:8,
+      showCharacter:false,
+      showOutline:false,
+      strokeColor:"#171717",
+      outlineColor:"#dedede",
+      highlightColor:"#534ab7",
+      drawingColor:"#534ab7",
+      drawingWidth:5,
+      showHintAfterMisses:false,
+      highlightOnComplete:true,
+      onLoadCharDataSuccess:function(data){
+        charData[i][j]=data;
+        if(hinted[i][j]) renderTwoStrokeHint(i,j);
+      },
+      onLoadCharDataError:function(){
+        el.innerHTML='<span class="loading" style="color:var(--danger)">could not load '+ch+'</span>';
+      }
+    });
+    writers[i][j]=writer;
+    writer.quiz({
+      onMistake:function(data){
+        mistakes[i]++;
+        strokeProgress[i][j]=data.strokeNum;
+        updateStatus(i);
+      },
+      onCorrectStroke:function(data){
+        strokeProgress[i][j]=data.strokeNum+1;
+        updateStatus(i);
+      },
+      onComplete:function(){
+        completed[i][j]=true;
+        el.classList.add("done");
+        updateStatus(i);
+        if(completed[i].every(Boolean)){
+          ws[i]=2;
+          window.setTimeout(function(){updateCard(i);updateFooter();},650);
+        }
+      }
+    });
+  });
+}
+
+function renderTwoStrokeHint(i,j){
+  var pad=document.getElementById("pad-"+i+"-"+j), data=charData[i][j];
+  if(!pad||!data) return;
+  var old=pad.querySelector(".hint-layer");
+  if(old) old.remove();
+  var size=padSize(), transform=HanziWriter.getScalingTransform(size,size,8);
+  var svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("class","hint-layer");
+  svg.setAttribute("width",size);
+  svg.setAttribute("height",size);
+  var group=document.createElementNS("http://www.w3.org/2000/svg","g");
+  group.setAttribute("transform",transform.transform);
+  data.strokes.slice(0,2).forEach(function(stroke){
+    var path=document.createElementNS("http://www.w3.org/2000/svg","path");
+    path.setAttribute("d",stroke);
+    path.setAttribute("fill","var(--accent)");
+    path.setAttribute("opacity",".48");
+    group.appendChild(path);
+  });
+  svg.appendChild(group);
+  pad.appendChild(svg);
+}
+
+function renderTraceGuide(i,j){
+  var pad=document.getElementById("pad-"+i+"-"+j), data=charData[i][j];
+  if(!pad||!data) return;
+  var old=pad.querySelector(".trace-layer");
+  if(old) old.remove();
+  var size=padSize(), transform=HanziWriter.getScalingTransform(size,size,8);
+  var svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("class","trace-layer");
+  svg.setAttribute("width",size);
+  svg.setAttribute("height",size);
+  var group=document.createElementNS("http://www.w3.org/2000/svg","g");
+  group.setAttribute("transform",transform.transform);
+  data.strokes.forEach(function(stroke){
+    var path=document.createElementNS("http://www.w3.org/2000/svg","path");
+    path.setAttribute("d",stroke);
+    path.setAttribute("fill","#b8b8b8");
+    path.setAttribute("opacity",".5");
+    group.appendChild(path);
+  });
+  svg.appendChild(group);
+  pad.insertBefore(svg,pad.firstChild);
+}
+
+function updateStatus(i){
+  var status=document.getElementById("status-"+i);
+  if(!status) return;
+  var done=completed[i].filter(Boolean).length, total=completed[i].length;
+  var helped=assisted[i].filter(Boolean).length;
+  if(done===total){
+    status.className="status good";
+    status.textContent=helped
+      ?"Completed! "+(total-helped)+" independently, "+helped+" with help."
+      :"Correct! All "+total+" character"+(total===1?"":"s")+" completed independently.";
+  }else if(mistakes[i]){
+    status.className="status bad";
+    status.textContent=done+"/"+total+" complete. Check the stroke order and try that stroke again.";
+  }else{
+    status.className="status";
+    status.textContent=done+"/"+total+" complete. Write each character in stroke order.";
+  }
+}
+
+function currentCharIndex(i){
+  return completed[i].findIndex(function(done){return !done;});
+}
+
+function markAssisted(i,j){
+  assisted[i][j]=true;
+  updateFooter();
+}
+
+function gHint(i){
+  var first=currentCharIndex(i);
+  if(first<0) return;
+  markAssisted(i,first);
+  hinted[i][first]=true;
+  renderTwoStrokeHint(i,first);
+  var status=document.getElementById("status-"+i);
+  if(status){
+    status.className="status";
+    status.textContent="The first two strokes are shown in purple. This character will count as assisted.";
+  }
+}
+
+function gTraceCurrent(i){
+  var j=currentCharIndex(i), writer=writers[i]&&writers[i][j];
+  if(j<0||!writer) return;
+  markAssisted(i,j);
+  renderTraceGuide(i,j);
+  var status=document.getElementById("status-"+i);
+  if(status){
+    status.className="status";
+    status.textContent="Trace the faint character in the correct stroke order. It will count as assisted.";
+  }
+}
+
+function gShowNextStroke(i){
+  var j=currentCharIndex(i), writer=writers[i]&&writers[i][j];
+  if(j<0||!writer) return;
+  markAssisted(i,j);
+  writer.highlightStroke(strokeProgress[i][j]||0);
+  var status=document.getElementById("status-"+i);
+  if(status){
+    status.className="status";
+    status.textContent="Watch the purple stroke, then draw it yourself. This character will count as assisted.";
+  }
+}
+
+function attachInput(i){
+  if(mode!=="typing") return;
+  var input=document.getElementById("inp"+i);
+  if(!input) return;
+  input.value=uv[i]||"";
+  input.addEventListener("input",function(){uv[i]=input.value;});
+  input.addEventListener("keydown",function(e){
+    if(e.key==="Enter"){
+      uv[i]=input.value;
+      ws[i]=isMatch(uv[i],S[ci].w[i])?2:1;
+      updateCard(i);
+      updateFooter();
+    }
+    e.stopPropagation();
+  });
+}
+
+function gTypeHint(i){
+  typeHints[i]=true;
+  updateCard(i);
+}
+
+function gReveal(i){
+  writers[i].forEach(function(writer){if(writer) writer.cancelQuiz();});
+  ws[i]=3;
+  updateCard(i);
+  updateFooter();
+}
+
+function gRetry(i){
+  ws[i]=0;
+  completed[i]=charsFor(S[ci].w[i]).map(function(){return false;});
+  assisted[i]=charsFor(S[ci].w[i]).map(function(){return false;});
+  strokeProgress[i]=charsFor(S[ci].w[i]).map(function(){return 0;});
+  hinted[i]=charsFor(S[ci].w[i]).map(function(){return false;});
+  typeHints[i]=false;
+  mistakes[i]=0;
+  uv[i]="";
+  updateCard(i);
+}
+
+function gRevealAll(){
+  writers.forEach(function(group){
+    group.forEach(function(writer){if(writer&&writer.cancelQuiz) writer.cancelQuiz();});
+  });
+  ws=ws.map(function(state){return state===2?2:3;});
+  S[ci].w.forEach(function(_,i){updateCard(i);});
+  updateFooter();
+}
+
+function gReset(){
+  gInit(ci);
+}
+
+function updateCard(i){
+  var card=document.getElementById("card"+i);
+  if(!card) return;
+  card.innerHTML=cardInner(i);
+  if(mode==="writing") attachWriters(i);
+  else attachInput(i);
+}
+
+function updateFooter(){
+  var allDone=ws.every(function(state){return state>=2;});
+  var correct=ws.filter(function(state){return state===2;}).length;
+  var assistedChars=assisted.reduce(function(total,word,i){
+    return total+word.filter(function(helped,j){return helped&&completed[i][j];}).length;
+  },0);
+  var completedChars=completed.reduce(function(total,word){
+    return total+word.filter(Boolean).length;
+  },0);
+  var independentChars=completedChars-assistedChars;
+  var revealed=ws.filter(function(state){return state===3;}).length;
+  var msg=allDone
+    ?(mode==="writing"
+      ?'<span style="color:var(--success);font-weight:650">Done - '+independentChars+' independently · '+assistedChars+' assisted'+(revealed?' · '+revealed+' answer'+(revealed===1?'':'s')+' revealed':'')+'.</span>'
+      :(correct===ws.length
+        ?'<span style="color:var(--success);font-weight:650">All correct! Press <span class="kk">space</span> to hear it.</span>'
+        :'<span>Done - '+correct+'/'+ws.length+' completed correctly.</span>'))
+    :(mode==="writing"
+      ?'<span>Write with a mouse, stylus, or finger. <span class="kk">space</span> plays the sentence.</span>'
+      :'<span>Type pinyin or Chinese characters and press <span class="kk">enter</span>. <span class="kk">space</span> plays the sentence.</span>');
+  var pips=S.map(function(_,j){return '<span class="pip'+(j===ci?' on':'')+'"></span>';}).join("");
+  document.getElementById("gfoot").innerHTML='<div class="game-footer"><div style="margin-bottom:12px">'+msg+'</div>'+
+    '<div class="footer-row"><div>'+pips+'<span style="font-size:13px;margin-left:8px">'+(ci+1)+' / '+S.length+'</span></div>'+
+    '<div class="footer-actions">'+
+      '<button onclick="gInit((ci-1+'+S.length+')%'+S.length+')">prev</button>'+
+      '<button onclick="gReset()">reset</button>'+
+      '<button onclick="gRevealAll()">reveal all</button>'+
+      '<button onclick="gSpeak()">play</button>'+
+      '<button onclick="gInit((ci+1)%'+S.length+')">next</button>'+
+    '</div></div></div>';
+}
+
+function gRender(){
+  var cards=S[ci].w.map(function(_,i){
+    return '<section class="wc" id="card'+i+'">'+cardInner(i)+'</section>';
+  }).join("");
+  var error=mode!=="writing"||window.HanziWriter?"":'<div class="lib-error">Writing practice needs an internet connection to load the stroke-checking library.</div>';
+  document.getElementById("gc").innerHTML=
+    '<div class="mode-bar" role="group" aria-label="Practice mode">'+
+      '<button class="mode-toggle'+(mode==="typing"?' active':'')+'" onclick="setMode(\'typing\')">Typing</button>'+
+      '<button class="mode-toggle'+(mode==="writing"?' active':'')+'" onclick="setMode(\'writing\')">Writing</button>'+
+    '</div>'+error+
+    '<div class="prompt-card"><p>'+S[ci].en+'</p>'+
+    '<div class="prompt-help">'+(mode==="writing"?'Write the Chinese translation one character at a time.':'Type the Chinese translation using pinyin or characters.')+'</div></div>'+
+    '<div class="word-grid">'+cards+'</div><div id="gfoot"></div>';
+  S[ci].w.forEach(function(_,i){
+    if(mode==="writing") attachWriters(i);
+    else attachInput(i);
+  });
+  updateFooter();
+}
+
+function setMode(nextMode){
+  if(nextMode===mode) return;
+  mode=nextMode;
+  gInit(ci);
+}
+
+window.gInit=gInit;
+window.gHint=gHint;
+window.gTraceCurrent=gTraceCurrent;
+window.gShowNextStroke=gShowNextStroke;
+window.gTypeHint=gTypeHint;
+window.gReveal=gReveal;
+window.gRetry=gRetry;
+window.gRevealAll=gRevealAll;
+window.gReset=gReset;
+window.gSpeak=gSpeak;
+window.setMode=setMode;
+
+document.addEventListener("keydown",function(e){
+  if(e.code==="Space"){e.preventDefault();gSpeak();}
+  else if(e.code==="ArrowRight"){e.preventDefault();gInit((ci+1)%S.length);}
+  else if(e.code==="ArrowLeft"){e.preventDefault();gInit((ci-1+S.length)%S.length);}
+});
+
+gInit(0);
+</script>
+</body>
+</html>
