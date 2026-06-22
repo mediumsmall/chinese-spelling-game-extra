@@ -27,6 +27,8 @@ button{font:inherit;cursor:pointer}
 .mode-toggle:first-child{border-radius:10px 0 0 10px}
 .mode-toggle:last-child{border-radius:0 10px 10px 0}
 .mode-toggle.active{background:var(--text);border-color:var(--text);color:#fff;font-weight:650}
+.lesson-row{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.lesson-select{padding:9px 13px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--text);font:inherit;font-weight:650}
 .prompt-card{background:var(--panel);border-radius:18px;padding:36px 28px;margin-bottom:38px;text-align:center}
 .prompt-card p{font-size:44px;line-height:1.15;font-weight:750;margin:0}
 .prompt-help{font-size:15px;color:var(--muted);margin-top:12px}
@@ -93,6 +95,7 @@ button{font:inherit;cursor:pointer}
   .word-text{font-size:25px}
   .char-wrap,.char-pad{width:146px}
   .char-pad{height:146px}
+  .lesson-select{width:100%;max-width:280px}
 }
 </style>
 </head>
@@ -101,7 +104,85 @@ button{font:inherit;cursor:pointer}
 <main class="game-shell"><div id="gc"></div></main>
 
 <script>
-var S=[
+var LESSONS={
+  "hsk3-19":{label:"HSK 3 19课",sentences:[
+  {en:"That puppy's ears are very big and very cute.",zh:"那个小狗的耳朵很大，非常可爱。",w:[
+    {e:"That puppy's ears",z:"那个小狗的耳朵",py:"nà ge xiǎo gǒu de ěr duo",l:"主语",c:"ls"},
+    {e:"are very big,",z:"很大",py:"hěn dà",l:"谓语",c:"lp"},
+    {e:"and very cute.",z:"非常可爱",py:"fēi cháng kě ài",l:"谓语",c:"lp"}
+  ]},
+  {en:"After my younger sister washed her face, she went to sleep.",zh:"妹妹洗了脸以后就去睡觉了。",w:[
+    {e:"After my younger sister washed her face,",z:"妹妹洗了脸以后",py:"mèi mei xǐ le liǎn yǐ hòu",l:"状语",c:"la"},
+    {e:"she went",z:"就去",py:"jiù qù",l:"谓语",c:"lp"},
+    {e:"to sleep.",z:"睡觉了",py:"shuì jiào le",l:"宾语",c:"lo"}
+  ]},
+  {en:"These pants are too short; I want to change them for another pair.",zh:"这条裤子太短了，我想换一条。",w:[
+    {e:"These pants",z:"这条裤子",py:"zhè tiáo kù zi",l:"主语",c:"ls"},
+    {e:"are too short,",z:"太短了",py:"tài duǎn le",l:"谓语",c:"lp"},
+    {e:"I want",z:"我想",py:"wǒ xiǎng",l:"主语",c:"ls"},
+    {e:"to change them for another pair.",z:"换一条",py:"huàn yì tiáo",l:"谓语",c:"lp"}
+  ]},
+  {en:"Last summer, my friend and I rode horses on the grassland.",zh:"去年夏天，我和朋友在草原上骑了马。",w:[
+    {e:"Last summer,",z:"去年夏天",py:"qù nián xià tiān",l:"状语",c:"la"},
+    {e:"my friend and I",z:"我和朋友",py:"wǒ hé péng you",l:"主语",c:"ls"},
+    {e:"on the grassland",z:"在草原上",py:"zài cǎo yuán shàng",l:"状语",c:"la"},
+    {e:"rode horses.",z:"骑了马",py:"qí le mǎ",l:"谓语",c:"lp"}
+  ]},
+  {en:"There is a map of China on the table.",zh:"桌子上有一张中国地图。",w:[
+    {e:"On the table",z:"桌子上",py:"zhuō zi shàng",l:"状语",c:"la"},
+    {e:"there is",z:"有",py:"yǒu",l:"谓语",c:"lp"},
+    {e:"a map of China.",z:"一张中国地图",py:"yì zhāng zhōng guó dì tú",l:"宾语",c:"lo"}
+  ]},
+  {en:"Excuse me, which manager are you looking for?",zh:"请问，您找哪位经理？",w:[
+    {e:"Excuse me,",z:"请问",py:"qǐng wèn",l:"称呼",c:"lc"},
+    {e:"are you looking for",z:"您找",py:"nín zhǎo",l:"谓语",c:"lp"},
+    {e:"which manager?",z:"哪位经理",py:"nǎ wèi jīng lǐ",l:"宾语",c:"lo"}
+  ]},
+  {en:"Today's air is great, and the sky is very blue.",zh:"今天的空气很好，天空非常蓝。",w:[
+    {e:"Today's air",z:"今天的空气",py:"jīn tiān de kōng qì",l:"主语",c:"ls"},
+    {e:"is great,",z:"很好",py:"hěn hǎo",l:"谓语",c:"lp"},
+    {e:"and the sky",z:"天空",py:"tiān kōng",l:"主语",c:"ls"},
+    {e:"is very blue.",z:"非常蓝",py:"fēi cháng lán",l:"谓语",c:"lp"}
+  ]},
+  {en:"Autumn weather in Beijing is neither cold nor hot; it is the most comfortable.",zh:"北京的秋天天气不冷也不热，最舒服。",w:[
+    {e:"Autumn weather in Beijing",z:"北京的秋天天气",py:"běi jīng de qiū tiān tiān qì",l:"主语",c:"ls"},
+    {e:"is neither cold nor hot,",z:"不冷也不热",py:"bù lěng yě bú rè",l:"谓语",c:"lp"},
+    {e:"is the most comfortable.",z:"最舒服",py:"zuì shū fu",l:"谓语",c:"lp"}
+  ]},
+  {en:"Happy birthday to you, hope you spend every day happily!",zh:"祝你生日快乐，天天都过得开心！",w:[
+    {e:"Happy birthday to you,",z:"祝你生日快乐",py:"zhù nǐ shēng rì kuài lè",l:"谓语",c:"lp"},
+    {e:"every day",z:"天天",py:"tiān tiān",l:"状语",c:"la"},
+    {e:"hope you spend happily!",z:"都过得开心",py:"dōu guò de kāi xīn",l:"谓语",c:"lp"}
+  ]},
+  {en:"There are many little birds singing in the tree.",zh:"树上有很多小鸟在唱歌。",w:[
+    {e:"In the tree",z:"树上",py:"shù shàng",l:"状语",c:"la"},
+    {e:"there are",z:"有",py:"yǒu",l:"谓语",c:"lp"},
+    {e:"many little birds",z:"很多小鸟",py:"hěn duō xiǎo niǎo",l:"宾语",c:"lo"},
+    {e:"singing.",z:"在唱歌",py:"zài chàng gē",l:"谓语",c:"lp"}
+  ]},
+  {en:"Stop crying, things will definitely get better.",zh:"别哭了，事情一定会变好的。",w:[
+    {e:"Stop crying,",z:"别哭了",py:"bié kū le",l:"谓语",c:"lp"},
+    {e:"things",z:"事情",py:"shì qing",l:"主语",c:"ls"},
+    {e:"will definitely get better.",z:"一定会变好的",py:"yí dìng huì biàn hǎo de",l:"谓语",c:"lp"}
+  ]},
+  {en:"The Yellow River is the second longest river in China and is very famous.",zh:"黄河是中国第二长河，非常有名。",w:[
+    {e:"The Yellow River",z:"黄河",py:"huáng hé",l:"主语",c:"ls"},
+    {e:"is China's second longest river,",z:"是中国第二长河",py:"shì zhōng guó dì èr cháng hé",l:"谓语",c:"lp"},
+    {e:"and is very famous.",z:"非常有名",py:"fēi cháng yǒu míng",l:"谓语",c:"lp"}
+  ]},
+  {en:"It takes us two hours to go to that small island by boat.",zh:"我们坐船去那个小岛需要两个小时。",w:[
+    {e:"We go by boat",z:"我们坐船",py:"wǒ men zuò chuán",l:"主语",c:"ls"},
+    {e:"to that small island",z:"去那个小岛",py:"qù nà ge xiǎo dǎo",l:"谓语",c:"lp"},
+    {e:"takes two hours.",z:"需要两个小时",py:"xū yào liǎng ge xiǎo shí",l:"谓语",c:"lp"}
+  ]},
+  {en:"I pass by this coffee shop every day when I go to work.",zh:"我每天上班都会经过这家咖啡馆。",w:[
+    {e:"I",z:"我",py:"wǒ",l:"主语",c:"ls"},
+    {e:"every day when I go to work",z:"每天上班",py:"měi tiān shàng bān",l:"状语",c:"la"},
+    {e:"will pass by",z:"都会经过",py:"dōu huì jīng guò",l:"谓语",c:"lp"},
+    {e:"this coffee shop.",z:"这家咖啡馆",py:"zhè jiā kā fēi guǎn",l:"宾语",c:"lo"}
+  ]}
+  ]},
+  "hsk3-20":{label:"HSK 3 20课",sentences:[
   {en:"I bought a new camera and carry it with me every day.",zh:"我买了一个新照相机，天天都带着它。",w:[
     {e:"I",z:"我",py:"wǒ",l:"主语",c:"ls"},
     {e:"bought",z:"买了",py:"mǎi le",l:"谓语",c:"lp"},
@@ -173,8 +254,13 @@ var S=[
     {e:"the scenery here",z:"这里的风景",py:"zhè lǐ de fēng jǐng",l:"主语",c:"ls"},
     {e:"is so beautiful!",z:"多么漂亮啊",py:"duō me piào liang a",l:"谓语",c:"lp"}
   ]}
-];
+  ]}
+};
 
+var LESSON_ORDER=["hsk3-20","hsk3-19"];
+var requestedLesson=new URLSearchParams(window.location.search).get("lesson");
+var currentLesson=LESSONS[requestedLesson]?requestedLesson:"hsk3-20";
+var S=LESSONS[currentLesson].sentences;
 var ci=0, mode="writing", ws=[], writers=[], completed=[], assisted=[], strokeProgress=[], mistakes=[], hinted=[], typeHints=[], charData=[], uv=[];
 var bestVoice=null;
 
@@ -556,7 +642,11 @@ function gRender(){
     return '<section class="wc" id="card'+i+'">'+cardInner(i)+'</section>';
   }).join("");
   var error=mode!=="writing"||window.HanziWriter?"":'<div class="lib-error">Writing practice needs an internet connection to load the stroke-checking library.</div>';
+  var lessonOptions=LESSON_ORDER.map(function(lesson){
+    return '<option value="'+lesson+'"'+(lesson===currentLesson?' selected':'')+'>'+LESSONS[lesson].label+'</option>';
+  }).join("");
   document.getElementById("gc").innerHTML=
+    '<div class="lesson-row"><select class="lesson-select" aria-label="Choose lesson" onchange="setLesson(this.value)">'+lessonOptions+'</select></div>'+
     '<div class="mode-bar" role="group" aria-label="Practice mode">'+
       '<button class="mode-toggle'+(mode==="typing"?' active':'')+'" onclick="setMode(\'typing\')">Typing</button>'+
       '<button class="mode-toggle'+(mode==="writing"?' active':'')+'" onclick="setMode(\'writing\')">Writing</button>'+
@@ -577,6 +667,19 @@ function setMode(nextMode){
   gInit(ci);
 }
 
+function setLesson(nextLesson){
+  if(!LESSONS[nextLesson]||nextLesson===currentLesson) return;
+  writers.forEach(function(group){
+    group.forEach(function(writer){if(writer&&writer.cancelQuiz) writer.cancelQuiz();});
+  });
+  currentLesson=nextLesson;
+  S=LESSONS[currentLesson].sentences;
+  var url=new URL(window.location.href);
+  url.searchParams.set("lesson",currentLesson);
+  window.history.replaceState({}, "", url);
+  gInit(0);
+}
+
 window.gInit=gInit;
 window.gHint=gHint;
 window.gTraceCurrent=gTraceCurrent;
@@ -588,6 +691,7 @@ window.gRevealAll=gRevealAll;
 window.gReset=gReset;
 window.gSpeak=gSpeak;
 window.setMode=setMode;
+window.setLesson=setLesson;
 
 document.addEventListener("keydown",function(e){
   if(e.code==="Space"){e.preventDefault();gSpeak();}
